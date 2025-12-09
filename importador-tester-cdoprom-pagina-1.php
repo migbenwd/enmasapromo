@@ -31,6 +31,7 @@ const DATA_FILE = 'lectura_api_cdo.js';
 
 
 $total_pages = 1;
+$cant_productos_por_ciclo = 100;
 
 for ($page_number = 1; $page_number <= $total_pages; $page_number++) {
     call_api($url_API_woo, $ck_API_woo,$cs_API_woo, $page_number, $total_pages);
