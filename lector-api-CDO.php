@@ -4,24 +4,19 @@ set_time_limit(0);
 
 require __DIR__ . '/vendor/autoload.php';
 
-use Automattic\WooCommerce\Client;
-use Automattic\WooCommerce\HttpClient\HttpClientException;
 
-// Nombre del archivo de salida JSON/JS
-// 🚨 IMPORTANTE: Definir la ruta absoluta es CRUCIAL en WordPress.
-// Asumiremos que quieres guardarlo en el mismo directorio que este script.
-// Si no funciona, DEBES usar una ruta más específica (ver punto 1 abajo).
 const DATA_FILE = __DIR__ . '/lectura_api_cdo.js';
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 1;
 
-// Array acumulador general para almacenar todos los productos de las páginas
+// Array acumulador general para almacenar todos los productos de las páginas.
+// Será un array secuencial para generar un ARRAY JSON válido.
 $productos_acumulados = [];
 
 // ... (Resto de variables de conexión) ...
 $url_API_woo = 'https://enmasapromo.cl';
 $ck_API_woo = 'ck_728d2d4d51821dd4b92638321287163829053'; 
 $cs_API_woo = 'cs_a676d53d286fa3ba81ed6dde7ffadde6e8b29053'; 
-$total_pages = 5; 
+$total_pages = 1; 
 
 
 // ====================================================================================
@@ -31,29 +26,28 @@ $total_pages = 5;
 status_message('Iniciando proceso de lectura de API. Archivo de destino: ' . DATA_FILE);
 
 try {
-    $js_variable_declaration = "const CDO_PRODUCTS_DATA = [];\n\n";
-
+    
     // Intentar escribir el contenido inicial.
-    if (file_put_contents(DATA_FILE, $js_variable_declaration, LOCK_EX) === false) {
+    if (file_put_contents(DATA_FILE, '', LOCK_EX) === false) { 
         
         // 🚨 SI FALLA LA ESCRITURA INICIAL, intentamos establecer permisos 🚨
         
         // 1. Intentar cambiar permisos del archivo (si ya existe pero no es escribible)
         if (file_exists(DATA_FILE)) {
-             @chmod(DATA_FILE, 0666); // Intentar permisos de lectura/escritura para todos
+             @chmod(DATA_FILE, 0666); 
              // Reintentar la escritura
-             if (file_put_contents(DATA_FILE, $js_variable_declaration, LOCK_EX) !== false) {
+             if (file_put_contents(DATA_FILE, '', LOCK_EX) !== false) {
                 status_message('✅ ÉXITO: Archivo ya existía, permisos forzados y escritura completada.', true);
-                goto end_initialization; // Saltar al resto del código si tiene éxito
+                goto end_initialization; 
              }
         }
         
         // 2. Si todavía falla o no existe, intentar cambiar permisos del directorio
         $dir_path = dirname(DATA_FILE);
-        @chmod($dir_path, 0777); // Intentar permisos totales en el directorio
+        @chmod($dir_path, 0777); 
         
         // 3. Reintentar la creación después de cambiar permisos del directorio
-        if (file_put_contents(DATA_FILE, $js_variable_declaration, LOCK_EX) === false) {
+        if (file_put_contents(DATA_FILE, '', LOCK_EX) === false) {
             // Si todo falla, lanzar la excepción final
             throw new Exception("Fallo en la escritura. Verifique permisos (0777/0666) o la ruta de archivo.");
         }
@@ -76,21 +70,27 @@ for ($page_number = 1; $page_number <= $total_pages; $page_number++) {
     call_api($url_API_woo, $ck_API_woo, $cs_API_woo, $page_number, $total_pages, $productos_acumulados);
 }
 
+// ====================================================================================
 // 3. Guardar todo el contenido acumulado en el archivo JS al finalizar
+// (Usando json_encode para generar un ARRAY JSON válido)
+// ====================================================================================
+
 try {
+    // Codificar el array secuencial a un Array JSON []
     $json_productos = json_encode($productos_acumulados, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-    // $js_content = "const CDO_PRODUCTS_DATA = " . $json_productos . ";\n";
-    $js_content =  $json_productos . ";\n";
+    
+    // El contenido final es el JSON y un punto y coma
+    $js_content = $json_productos . ";\n"; 
     
     if (file_put_contents(DATA_FILE, $js_content, LOCK_EX) === false) {
         throw new Exception("Fallo al escribir los datos finales en el archivo.");
     }
-    status_message("\n✅ PROCESO FINALIZADO: Los datos de " . count($productos_acumulados) . " páginas han sido guardados en " . DATA_FILE . ".", true);
+    status_message("\n✅ PROCESO FINALIZADO: Los datos de " . count($productos_acumulados) . " páginas han sido guardados en " . DATA_FILE . " en formato JSON válido.", true);
 } catch (Exception $e) {
     status_message('❌ ERROR AL ESCRIBIR LOS DATOS FINALES: ' . $e->getMessage(), true, true);
 }
 
-// ... (El resto de las funciones call_api y status_message permanecen igual) ...
+// ====================================================================================
 
 /**
  * Función auxiliar para imprimir mensajes de estado.
@@ -103,8 +103,7 @@ function status_message($message, $important = false, $error = false)
 
 
 /**
- * Llama a la API de origen, obtiene los datos y los acumula en un array SOLO si la cantidad
- * de productos es <= PAGE_SIZE (100).
+ * Llama a la API de origen, obtiene los datos y los acumula en un array.
  */
 function call_api($url_API_woo, $ck_API_woo, $cs_API_woo, $page_number, $total_pages, &$productos_acumulados)
 {
@@ -153,11 +152,13 @@ function call_api($url_API_woo, $ck_API_woo, $cs_API_woo, $page_number, $total_p
 
         status_message('   Cantidad Productos Encontrados (Pág ' . $page_number . '): ' . $cantidad_de_productos_api);
         
-        // CONDICIONAL DE 100 PRODUCTOS
+        // CONDICIONAL DE PAGE_SIZE PRODUCTOS
         if ($cantidad_de_productos_api <= PAGE_SIZE) {
             
-            $productos_acumulados[] = [
-                'page' => $page_number,
+            // ⭐ CAMBIO CLAVE: Se vuelve a usar la adición secuencial []
+            // y se incluye la clave 'page' dentro del objeto
+            $productos_acumulados[] = [ 
+                'page' => $page_number, // Añadido para mantener la información de la página
                 'page_size' => PAGE_SIZE, 
                 'cantidad_de_productos_api' => $cantidad_de_productos_api,
                 'productos' => $items_origin

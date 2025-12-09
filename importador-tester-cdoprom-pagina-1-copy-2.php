@@ -30,74 +30,18 @@ $cod_proveedor = 'CDO';
 const DATA_FILE = 'lectura_api_cdo.js';
 
 
-$total_pages = 1; 
+$total_pages = 1;
 $cant_productos_por_ciclo = 100;
 
 for ($page_number = 1; $page_number <= $total_pages; $page_number++) {
     call_api($url_API_woo, $ck_API_woo,$cs_API_woo, $page_number, $total_pages);
 }
 
-// ====================================================================================
-// Funciones Auxiliares (Deben estar definidas en el archivo completo)
-// ====================================================================================
-
-
-/**
- * Función auxiliar para extraer el contenido JSON de un archivo que 
- * puede contener código JavaScript u otras envolturas.
- * Busca el primer corchete de apertura '[' y lo empareja con el corchete de cierre ']'.
- * @param string $data_raw El contenido crudo del archivo.
- * @return string|false El bloque JSON limpio o false si no se encuentra.
- */
-function extract_json_array($data_raw) {
-    // Busca un array JSON que empiece con '[' y termine con ']', 
-    // manejando caracteres de forma no codiciosa (U) y saltos de línea (s).
-    if (preg_match('/\[.*\]/sU', $data_raw, $matches)) {
-        return $matches[0];
-    }
-    return false;
-}
-
-// ====================================================================================
-// Función principal corregida
-// ====================================================================================
 
 function call_api($url_API_woo, $ck_API_woo,$cs_API_woo, $page_number, $total_pages)
 {
 
-    status_message('Iniciando lectura del archivo: ' . DATA_FILE);
-
-    if (!file_exists(DATA_FILE)) {
-        status_message('El archivo ' . DATA_FILE . ' no existe.', true);
-        exit(1);
-    }
-
-    $js_content = file_get_contents(DATA_FILE);
-
-    if ($js_content === false) {
-        status_message('No se pudo leer el archivo ' . DATA_FILE . '. Verifique permisos.', true);
-        exit(1);
-    }
-
-    status_message('✅ Lectura del archivo completada.');
-
-    $json_string = rtrim(trim($js_content), ';');
-
-    $data_pages_array = json_decode($json_string, true);
-
-    print_r($data_pages_array);
-    print("\n");
-
-    // 3. Revisar el error de decodificación.
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        status_message('❗Error: No se pudo decodificar el archivo JSON: ' . DATA_FILE);
-        status_message('JSON Error: ' . json_last_error_msg()); 
-        return; 
-    }
-    // ---------------------------------------------------------------------------------
-
-
-    $woocommerce = new Client(
+	$woocommerce = new Client(
     $url_API_woo,
     $ck_API_woo,
     $cs_API_woo,
@@ -110,40 +54,23 @@ function call_api($url_API_woo, $ck_API_woo,$cs_API_woo, $page_number, $total_pa
     ]
     );
     
-    // Lógica para encontrar la página correcta (sin cambios)
-    
-    $items_origin = [];
-    $found_page = false;
-
-    foreach ($data_pages_array as $page_data) {
-        if (isset($page_data['page']) && (int)$page_data['page'] === $page_number) {
-            
-            $items_origin = $page_data['productos'] ?? [];
-            $found_page = true;
-            break; 
-        }
-    }
-    
-    if (!$found_page) {
-        status_message('⚠️ Advertencia: No se encontraron datos para la Página ' . $page_number);
-        return;
-    }
-    
+       
+    $items_origin = $data_array;
+    $items_origin = $items_origin['productos'];
 
     $cantidad_de_productos_api = count($items_origin);
 
     print("\n");
-    status_message('Cantidad Productos Por SKU para la Página ' . $page_number . ': '. $cantidad_de_productos_api);
+    status_message('Cantidad Productos Por SKU: '. $cantidad_de_productos_api);
     print("\n");
 
     $increment_value = "1";
 
-    
     $increment_value = buscar_incremento();
     if (!$increment_value) {
         exit('❗Error: No se pudo obtener el valor de "increment_value_cdoprom" desde la base de datos.');
     }
-            
+        
     
     try {
     
@@ -152,9 +79,12 @@ function call_api($url_API_woo, $ck_API_woo,$cs_API_woo, $page_number, $total_pa
         foreach($items_origin as $product)
         {
             $sku = 'CDO-'.$product['code'];
-            $array_variantes = $product['variants'] ?? []; 
+            $array_variantes = $product['variants'];
             $cantidad_variaciones = count($array_variantes);
     
+            //$nombre_atributo = 'color_cdo_prom-'. date("h:i:sa");
+            // $nombre_atributo = 'Color CDO';
+            
             global $nombre_atributo;
 
 
@@ -169,6 +99,7 @@ function call_api($url_API_woo, $ck_API_woo,$cs_API_woo, $page_number, $total_pa
     
             $hora_inicio_proceso = date("h:i:sa");
     
+            // $objeto_producto = verificar_producto_por_sku($woocommerce, $sku, $product);
             $objeto_producto = verificar_producto_por_sku($woocommerce, $sku);
     
             if (!$objeto_producto) {
@@ -179,36 +110,40 @@ function call_api($url_API_woo, $ck_API_woo,$cs_API_woo, $page_number, $total_pa
                 status_message( 'CREAR producto por el SKU: '. $sku . ' a las '. date("h:i:sa"));
                 print("\n");
     
-                $producto_padre_id = crear_producto_padre($woocommerce, $product, $cantidad_variaciones, $increment_value);
+                // NO EXISTE...CREAR PRODUCTO PADRE...
     
-                // VERIFICAR ATRIBUTO:
-                
-                $verificacion_atributo = verificar_atributo_por_nombre($woocommerce, $nombre_atributo);
+               $producto_padre_id = crear_producto_padre($woocommerce, $product, $cantidad_variaciones, $increment_value);
     
-                if (!$verificacion_atributo) {
+                    // VERIFICAR ATRIBUTO:
+               
+                    $verificacion_atributo = verificar_atributo_por_nombre($woocommerce, $nombre_atributo);
     
-                    status_message( 'NO EXISTE EL ATRIBUTO HAY QUE CREARLO a las: '. date("h:i:sa"));
-                    print("\n");
+                    if (!$verificacion_atributo) {
     
-                    $data_atributo = crear_atributo($woocommerce, $nombre_atributo);
-                    $data_atributo_id = $data_atributo->id;
+                        status_message( 'NO EXISTE EL ATRIBUTO HAY QUE CREARLO a las: '. date("h:i:sa"));
+                        print("\n");
     
-                }
-                else 
-                {
+                        $data_atributo = crear_atributo($woocommerce, $nombre_atributo);
+                        $data_atributo_id = $data_atributo->id;
     
-                    $verificacion_atributo = reset($verificacion_atributo);
-                    $data_atributo_id = $verificacion_atributo->id;
+                    }
+                    else 
+                    {
+    
+                        $verificacion_atributo = reset($verificacion_atributo);
+                        $data_atributo_id = $verificacion_atributo->id;
     
     
-                    status_message( 'YA EXISTE EL ATRIBUTO y su id es: ' .$data_atributo_id. ' a las ' .date("h:i:sa"));
-                    print("\n");
+                        status_message( 'YA EXISTE EL ATRIBUTO y su id es: ' .$data_atributo_id. ' a las ' .date("h:i:sa"));
+                        print("\n");
     
-                }
+                    }
     
-                // VA A CREACION DE VARIACIONES 
+                    // VA A CREACION DE VARIACIONES 
     
-                crear_variaciones_del_producto($woocommerce, $product, $producto_padre_id->id, $cantidad_variaciones, $data_atributo_id, $nombre_atributo, $increment_value, $sku, $page_number);
+                    // crear_variaciones_del_producto($woocommerce, $product, $producto_padre_id->id, $cantidad_variaciones, $data_atributo_id, $nombre_atributo, $increment_value);
+
+                    crear_variaciones_del_producto($woocommerce, $product, $producto_padre_id->id, $cantidad_variaciones, $data_atributo_id, $nombre_atributo, $increment_value, $sku, $page_number);
     
     
             }
