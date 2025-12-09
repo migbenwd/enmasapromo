@@ -53,31 +53,6 @@ function call_api($url_API_woo, $ck_API_woo,$cs_API_woo, $page_number, $total_pa
     ]
     );
     
-    // ====================================================================================
-    // Conexión API origen
-    // ====================================================================================
-    
-    /*
-    $url_API="http://api.chile.cdopromocionales.com/v2/products?auth_token=2HPTRKTWv1UAD2cXekjDWQ&page_size=100&page_number=".$page_number;
-    
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url_API);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30); // 30 segundos para conectar
-    curl_setopt($ch, CURLOPT_TIMEOUT, 8400); // 2 horas 20 minutos en segundos
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true); // Verificar SSL si se usa HTTP
-
-	print("\n");
-	print("✔  HORA INICIO LECTURA API: " . date("h:i:sa") . " \n");
-
-	$items_origin = curl_exec($ch);
-	curl_close($ch);
-
-	if (!$items_origin) {
-		exit('❗Error en API origen');
-	}
-
-    */
     
 	print("\n");
 	print("✔  HORA INICIO LECTURA API: " . date("h:i:sa") . " \n");
