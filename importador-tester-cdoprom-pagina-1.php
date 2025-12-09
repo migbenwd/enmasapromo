@@ -61,8 +61,7 @@ function call_api($url_API_woo, $ck_API_woo,$cs_API_woo, $page_number, $total_pa
     // ====================================================================================
     // Conexión API origen
     // ====================================================================================
-    
-    
+        
     $url_API="http://api.chile.cdopromocionales.com/v2/products?auth_token=2HPTRKTWv1UAD2cXekjDWQ&page_size=100&page_number=".$page_number;
     
     $ch = curl_init();
