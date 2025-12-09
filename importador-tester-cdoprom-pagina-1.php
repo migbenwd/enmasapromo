@@ -13,7 +13,6 @@ use Automattic\WooCommerce\HttpClient\HttpClientException;
 // Conexión API destino
 // ====================================================================================
 
-
 $url_API_woo = 'https://enmasapromo.cl';
 $ck_API_woo = 'ck_728d2d4d51821dd4b926385df43baa5c0c3ea7a7';
 $cs_API_woo = 'cs_a676d53d286fa3ba81ed6dde7ffadde6e8b29053';
@@ -25,7 +24,6 @@ $db_name = 'u253824733_xCNYA'; // Nombre de la base de datos
 
 $nombre_atributo = 'Color CDO';
 $cod_proveedor = 'CDO';
-
 
 const DATA_FILE = 'lectura_api_cdo.js';
 
@@ -41,20 +39,32 @@ for ($page_number = 1; $page_number <= $total_pages; $page_number++) {
 // Funciones Auxiliares (Deben estar definidas en el archivo completo)
 // ====================================================================================
 
-
 /**
  * Función auxiliar para extraer el contenido JSON de un archivo que 
- * puede contener código JavaScript u otras envolturas.
- * Busca el primer corchete de apertura '[' y lo empareja con el corchete de cierre ']'.
- * @param string $data_raw El contenido crudo del archivo.
+ * puede contener código JavaScript u otras envolturas, 
+ * enfocándose en el array principal.
+ * * @param string $data_raw El contenido crudo del archivo.
  * @return string|false El bloque JSON limpio o false si no se encuentra.
  */
 function extract_json_array($data_raw) {
-    // Busca un array JSON que empiece con '[' y termine con ']', 
-    // manejando caracteres de forma no codiciosa (U) y saltos de línea (s).
-    if (preg_match('/\[.*\]/sU', $data_raw, $matches)) {
-        return $matches[0];
+    
+    // 1. Limpieza inicial: eliminar posibles código JavaScript de asignación
+    // Esto limpia "var name = " y cualquier ";" final.
+    $cleaned_raw = preg_replace('/^\s*(\w+\s*=\s*|const\s+\w+\s*=\s*|let\s+\w+\s*=\s*)?|\s*;\s*$/s', '', $data_raw);
+    
+    // 2. Extraer el array JSON (del primer '[' al último ']')
+    // Usamos el modificador 's' para que '.' coincida con saltos de línea.
+    if (preg_match('/\s*(\[.*\])\s*$/s', $cleaned_raw, $matches)) {
+        $json_array_content = trim($matches[1]);
+        
+        // 3. (OPCIONAL/AVANZADO): Intentar corregir comas finales.
+        // Esto busca un patrón como ] o } seguido de una coma, opcionalmente con espacios/saltos de línea.
+        // Esto ayuda si el archivo JS tiene comas finales ilegales en JSON.
+        $json_array_content = preg_replace('/,\s*([\]}])/m', '$1', $json_array_content);
+        
+        return $json_array_content;
     }
+    
     return false;
 }
 
@@ -65,36 +75,49 @@ function extract_json_array($data_raw) {
 function call_api($url_API_woo, $ck_API_woo,$cs_API_woo, $page_number, $total_pages)
 {
 
-    status_message('Iniciando lectura del archivo: ' . DATA_FILE);
-
-    if (!file_exists(DATA_FILE)) {
-        status_message('El archivo ' . DATA_FILE . ' no existe.', true);
-        exit(1);
-    }
-
+// ... Código de verificación de archivo (status_message, file_get_contents) ...
     $js_content = file_get_contents(DATA_FILE);
-
-    if ($js_content === false) {
-        status_message('No se pudo leer el archivo ' . DATA_FILE . '. Verifique permisos.', true);
-        exit(1);
-    }
+    // ...
 
     status_message('✅ Lectura del archivo completada.');
 
-    $json_string = rtrim(trim($js_content), ';');
+    // USAR LA FUNCIÓN CORREGIDA AQUÍ
+    $json_clean = extract_json_array($js_content); 
+    
+    if ($json_clean === false) {
+        status_message('❗Error: No se pudo encontrar un array JSON válido en el archivo ' . DATA_FILE, true);
+        return;
+    }
 
-    $data_pages_array = json_decode($json_string, true);
-
-    print_r($data_pages_array);
-    print("\n");
+    // ---------------------------------------------------------------------------------
+    // Intentamos decodificar el array limpio
+    // ---------------------------------------------------------------------------------
+    $data_pages_array = json_decode($json_clean, true);
 
     // 3. Revisar el error de decodificación.
     if (json_last_error() !== JSON_ERROR_NONE) {
-        status_message('❗Error: No se pudo decodificar el archivo JSON: ' . DATA_FILE);
+        status_message('❗Error: No se pudo decodificar el bloque JSON: ' . DATA_FILE);
         status_message('JSON Error: ' . json_last_error_msg()); 
+        
+        // Agregamos una línea para depuración:
+        // Si el error persiste, la causa es el contenido de $json_clean (caracteres, comillas simples, etc.)
+        // status_message("Fragmento JSON que falló: " . substr($json_clean, 0, 500)); 
+
         return; 
     }
     // ---------------------------------------------------------------------------------
+    
+
+    $data_pages_array = json_decode($json_clean, true); // USAR $json_clean en lugar de $json_string
+
+     // 3. Revisar el error de decodificación.
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        status_message('❗Error: No se pudo decodificar el bloque JSON: ' . DATA_FILE);
+        status_message('JSON Error: ' . json_last_error_msg()); 
+        return; 
+    }
+
 
 
     $woocommerce = new Client(

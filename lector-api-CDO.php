@@ -6,7 +6,7 @@ require __DIR__ . '/vendor/autoload.php';
 
 
 const DATA_FILE = __DIR__ . '/lectura_api_cdo.js';
-const PAGE_SIZE = 1;
+const PAGE_SIZE = 3;
 
 // Array acumulador general para almacenar todos los productos de las páginas.
 // Será un array secuencial para generar un ARRAY JSON válido.
@@ -16,7 +16,7 @@ $productos_acumulados = [];
 $url_API_woo = 'https://enmasapromo.cl';
 $ck_API_woo = 'ck_728d2d4d51821dd4b92638321287163829053'; 
 $cs_API_woo = 'cs_a676d53d286fa3ba81ed6dde7ffadde6e8b29053'; 
-$total_pages = 1; 
+$total_pages = 5; 
 
 
 // ====================================================================================
