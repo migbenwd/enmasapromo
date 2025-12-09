@@ -79,7 +79,8 @@ for ($page_number = 1; $page_number <= $total_pages; $page_number++) {
 // 3. Guardar todo el contenido acumulado en el archivo JS al finalizar
 try {
     $json_productos = json_encode($productos_acumulados, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-    $js_content = "const CDO_PRODUCTS_DATA = " . $json_productos . ";\n";
+    // $js_content = "const CDO_PRODUCTS_DATA = " . $json_productos . ";\n";
+    $js_content =  $json_productos . ";\n";
     
     if (file_put_contents(DATA_FILE, $js_content, LOCK_EX) === false) {
         throw new Exception("Fallo al escribir los datos finales en el archivo.");

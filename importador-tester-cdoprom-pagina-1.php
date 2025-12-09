@@ -14,18 +14,9 @@ use Automattic\WooCommerce\HttpClient\HttpClientException;
 // ====================================================================================
 
 
-/* NUEVAS CLAVES - HOY: 11 NOV 2025 - HORA SERVER: 14:10 */
-
 $url_API_woo = 'https://enmasapromo.cl';
 $ck_API_woo = 'ck_728d2d4d51821dd4b926385df43baa5c0c3ea7a7';
 $cs_API_woo = 'cs_a676d53d286fa3ba81ed6dde7ffadde6e8b29053';
-
-
-/*
-$url_API_woo = 'http://localhost/wp_local_tester';
-$ck_API_woo = 'ck_90b66dd999ced43a7e2f883c6685354ca81ea258';
-$cs_API_woo = 'cs_9655ae275a84b706c15ca7520988a422c96fe4d0';
-*/
 
 $db_host = 'localhost';
 $db_user = 'u253824733_lvOjK'; // Usuario de la base de datos
@@ -36,11 +27,15 @@ $nombre_atributo = 'Color CDO';
 $cod_proveedor = 'CDO';
 
 
+const DATA_FILE = 'lectura_api_cdo.js';
+
+
 $total_pages = 1;
 
 for ($page_number = 1; $page_number <= $total_pages; $page_number++) {
     call_api($url_API_woo, $ck_API_woo,$cs_API_woo, $page_number, $total_pages);
 }
+
 
 function call_api($url_API_woo, $ck_API_woo,$cs_API_woo, $page_number, $total_pages)
 {
@@ -61,7 +56,8 @@ function call_api($url_API_woo, $ck_API_woo,$cs_API_woo, $page_number, $total_pa
     // ====================================================================================
     // Conexión API origen
     // ====================================================================================
-        
+    
+    /*
     $url_API="http://api.chile.cdopromocionales.com/v2/products?auth_token=2HPTRKTWv1UAD2cXekjDWQ&page_size=100&page_number=".$page_number;
     
     $ch = curl_init();
@@ -80,11 +76,53 @@ function call_api($url_API_woo, $ck_API_woo,$cs_API_woo, $page_number, $total_pa
 	if (!$items_origin) {
 		exit('❗Error en API origen');
 	}
+
+    */
     
+	print("\n");
+	print("✔  HORA INICIO LECTURA API: " . date("h:i:sa") . " \n");
+	print("\n");
+
+
+    if (!file_exists(DATA_FILE)) {
+        throw new Exception("El archivo " . DATA_FILE . " no existe en la ruta: " . __DIR__);
+    }
+
+    $file_content = file_get_contents(DATA_FILE);
+    if ($file_content === false) {
+            throw new Exception("Fallo al leer el contenido del archivo.");
+    }
+
+    // Limpiar el contenido: Quitar 'const CDO_PRODUCTS_DATA =' y ';'
+    $json_start = strpos($file_content, '=');
+    if ($json_start === false) {
+        throw new Exception("Formato de archivo inválido. No se encontró la declaración de la variable.");
+    }
+    
+    $json_data = substr($file_content, $json_start + 1);
+    $json_data = trim($json_data);
+    if (substr($json_data, -1) === ';') {
+        $json_data = substr($json_data, 0, -1);
+    }
+
+    $data_array = json_decode($json_data, true);
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception("Error al decodificar JSON del archivo: " . json_last_error_msg());
+    }
+
+    if (!is_array($data_array)) {
+        throw new Exception("El contenido decodificado no es un array de páginas válido.");
+    }
+
+
+
     print("✔  HORA FIN LECTURA API: ". date("h:i:sa")." \n");
     
-    $items_origin = json_decode($items_origin, true);
-    $items_origin = $items_origin['products'];
+
+   
+    $items_origin = $data_array;
+    $items_origin = $items_origin['productos'];
 
     $cantidad_de_productos_api = count($items_origin);
 
@@ -93,7 +131,6 @@ function call_api($url_API_woo, $ck_API_woo,$cs_API_woo, $page_number, $total_pa
     print("\n");
 
     $increment_value = "1";
-    
 
     $increment_value = buscar_incremento();
     if (!$increment_value) {
