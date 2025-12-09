@@ -79,7 +79,7 @@ function call_api($url_API_woo, $ck_API_woo,$cs_API_woo, $page_number, $total_pa
     $js_content = file_get_contents(DATA_FILE);
     // ...
 
-    status_message('✅ Lectura del archivo completada.');
+    status_message('✅ migben - Lectura del archivo completada.');
 
     // USAR LA FUNCIÓN CORREGIDA AQUÍ
     $json_clean = extract_json_array($js_content); 
